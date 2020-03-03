@@ -17,7 +17,10 @@ import {
   TextInput,
   FlatList,
   TouchableOpacity,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
+import Geolocation from '@react-native-community/geolocation';
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
 import MapView, {Marker} from 'react-native-maps';
@@ -59,6 +62,11 @@ export default class App extends React.Component {
             'https://upload.wikimedia.org/wikipedia/commons/a/ae/NTUC_Centre.JPG',
         },
       ],
+      latitude: 0,
+      longitude: 0,
+      query: '',
+      showResult: false,
+      locationArray: [],
     };
   }
   sum(array, prop) {
@@ -68,30 +76,127 @@ export default class App extends React.Component {
     }
     return total;
   }
+  componentDidMount() {
+    this.checkgps();
+    this.getCarpark();
+  }
+  async checkgps() {
+    // navigator.geolocation.getCurrentPosition(position => {
+    //   this.setState(
+    //     {
+    //       latitude: position.coords.latitude,
+    //       longitude: position.coords.longitude,
+    //       error: null,
+    //     },
+    //     () => {
+    //       navigator.geolocation.clearWatch(this.watchId);
+    //     },
+    //   );
+    // });
+    Geolocation.getCurrentPosition(
+      position => {
+        console.log('position:', position.coords.latitude);
+        this.setState({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          error: null,
+        });
+      },
+      error => Alert.alert(error.message),
+      {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
+    );
+  }
 
+  search(text) {
+    const url =
+      'https://developers.onemap.sg/commonapi/search?returnGeom=Y&getAddrDetails=Y&pageNum=1&searchVal=' +
+      text;
+    fetch(url, {
+      method: 'GET',
+    })
+      .then(response => response.json())
+      .then(responseJson => {
+        console.log('response:', responseJson);
+        // this.setState({
+        //   location: responseJson.results[0].ADDRESS,
+        //   retrieved: true,
+        //   lat: parseFloat(responseJson.results[0].LATITUDE),
+        //   lon: parseFloat(responseJson.results[0].LONGTITUDE),
+        // });
+        this.setState({
+          showResult: true,
+          locationArray: responseJson.results,
+        });
+      })
+      .catch(err => {
+        console.log('error:', err);
+        // return res.status(404).send(err);
+      });
+  }
+  navigateToHere(item) {
+    console.log('item:', item);
+    this.setState({
+      showResult: false,
+      latitude: parseFloat(item.LATITUDE),
+      longitude: parseFloat(item.LATITUDE),
+    });
+
+    _mapView.animateToRegion(
+      {
+        latitude: parseFloat(item.LATITUDE),
+        longitude: parseFloat(item.LATITUDE),
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      1000,
+    );
+  }
+
+  getCarpark() {
+    let url =
+      'https://www.streetdirectory.com/api/?mode=search&profile=sd_auto&limit=50&country=sg&origin=*&output=json&q=carpark';
+    fetch(url, {
+      method: 'GET',
+    })
+      .then(response => response.json())
+      .then(responseJson => {
+        console.log('car park response:', responseJson);
+        this.setState({locationArray: responseJson});
+      });
+  }
   render() {
     return (
-      <View>
-        <MapView
-          initialRegion={{
-            latitude: 1.298,
-            longitude: 103.8579,
-            latitudeDelta: 0.01,
-            longitudeDelta: 0.01,
-          }}
-          style={styles.map}>
-          <MapView.Marker
-            coordinate={{
-              latitude: 1.3,
-              longitude: 103.86,
-            }}>
-            <Image
-              style={styles.car}
-              resizeMode={'contain'}
-              source={require('./image/car.png')}
-            />
-          </MapView.Marker>
-        </MapView>
+      <View style={styles.map}>
+        {this.state.latitude == 0 && (
+          <View style={styles.center}>
+            <ActivityIndicator size={'large'} style={{bottom: height / 6}} />
+          </View>
+        )}
+        {this.state.latitude != 0 && (
+          <MapView
+            ref={mapView => {
+              _mapView = mapView;
+            }}
+            initialRegion={{
+              latitude: this.state.latitude,
+              longitude: this.state.longitude,
+              latitudeDelta: 0.01,
+              longitudeDelta: 0.01,
+            }}
+            style={styles.map}>
+            <MapView.Marker
+              coordinate={{
+                latitude: this.state.latitude,
+                longitude: this.state.longitude,
+              }}>
+              <Image
+                style={styles.car}
+                resizeMode={'contain'}
+                source={require('./image/car.png')}
+              />
+            </MapView.Marker>
+          </MapView>
+        )}
         <View style={styles.header}>
           <View
             style={{
@@ -110,13 +215,42 @@ export default class App extends React.Component {
               style={{height: 40}}
               placeholder={' Where would you like to park?'}
               placeholderTextColor={'#4A8986'}
+              onChangeText={text =>
+                this.setState({query: text}, () => {
+                  this.search(text);
+                })
+              }
               style={{fontWeight: 'bold', paddingLeft: 20}}
             />
-            <Image
-              source={require('./image/search.png')}
-              style={styles.searchIcon}
-              resizeMode="contain"
-            />
+            <TouchableOpacity
+              style={styles.searchIconContainer}
+              onPress={() => {
+                this.search();
+              }}>
+              <Image
+                source={require('./image/search.png')}
+                style={styles.searchIcon}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+            {this.state.showResult == true && (
+              <View style={styles.dropDown}>
+                <FlatList
+                  data={this.state.locationArray}
+                  contentContainerStyle={{}}
+                  renderItem={({item}) => (
+                    <View style={styles.resultContainer}>
+                      <Text
+                        onPress={() => {
+                          this.navigateToHere(item);
+                        }}>
+                        {item.ADDRESS}
+                      </Text>
+                    </View>
+                  )}
+                />
+              </View>
+            )}
           </View>
         </View>
         <View style={{position: 'absolute', bottom: 0, maxHeight: height / 2}}>
@@ -128,7 +262,11 @@ export default class App extends React.Component {
                 </Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.locationIconContainter}>
+            <TouchableOpacity
+              onPress={() => {
+                this.checkgps();
+              }}
+              style={styles.locationIconContainter}>
               <View style={styles.center}>
                 <Image
                   source={require('./image/location.png')}
@@ -160,15 +298,42 @@ export default class App extends React.Component {
                   <View style={{flexDirection: 'row'}}>
                     <Image
                       source={{
-                        uri: item.picture,
+                        uri: this.state.data[
+                          Math.floor(Math.random() * this.state.data.length)
+                        ].picture,
                       }}
                       style={styles.picture}
                       resizeMode="cover"
                     />
-                    <View style={{justifyContent: 'center', paddingLeft: 10}}>
-                      <Text style={styles.name}>{item.name}</Text>
+
+                    <View style={{justifyContent: 'center', paddingLeft: 50}}>
+                      {this.state.locationArray.length > 0 && (
+                        <Text style={styles.name} numberOfLines={2}>
+                          {
+                            this.state.locationArray[
+                              Math.floor(
+                                Math.random() * this.state.locationArray.length,
+                              )
+                            ].v
+                          }
+                        </Text>
+                      )}
                       <Text style={styles.details}>
                         {item.distance + 'km  -' + item.time + ' mins away'}
+                      </Text>
+                    </View>
+                  </View>
+                  <View
+                    style={[
+                      styles.spotsNumberContainer,
+                      {
+                        backgroundColor:
+                          item.availableSpots == 0 ? 'lightgrey' : '#70E5C8',
+                      },
+                    ]}>
+                    <View style={styles.center}>
+                      <Text style={styles.spotsNumberText}>
+                        {item.availableSpots}
                       </Text>
                     </View>
                   </View>
@@ -195,7 +360,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     position: 'absolute',
-    top: 50,
+    top: 30,
   },
   menuIcon: {
     width: 30,
@@ -216,14 +381,15 @@ const styles = StyleSheet.create({
     zIndex: 1,
     elevation: 2,
   },
-
-  searchIcon: {
+  searchIconContainer: {
     position: 'absolute',
     right: 20,
-    width: 25,
-    height: 25,
     marginLeft: 10,
     justifyContent: 'center',
+  },
+  searchIcon: {
+    width: 25,
+    height: 25,
   },
   car: {
     width: 50,
@@ -249,7 +415,7 @@ const styles = StyleSheet.create({
     color: '#4A8986',
     fontWeight: 'bold',
     fontSize: 16,
-    maxWidth: 200,
+    maxWidth: width - 180,
   },
   details: {
     fontSize: 12,
@@ -286,5 +452,34 @@ const styles = StyleSheet.create({
   locationIcon: {
     width: 25,
     height: 25,
+  },
+  spotsNumberContainer: {
+    height: 35,
+    width: 70,
+    borderRadius: 10,
+
+    position: 'absolute',
+    justifyContent: 'center',
+    alignSelf: 'center',
+    left: 85,
+  },
+  spotsNumberText: {
+    fontSize: 16,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  dropDown: {
+    position: 'absolute',
+    maxHeight: 200,
+    width: '90%',
+    alignSelf: 'center',
+    top: 45,
+    backgroundColor: '#fff',
+    borderWidth: 0.4,
+    borderColor: 'lightgrey',
+  },
+  resultContainer: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
   },
 });
