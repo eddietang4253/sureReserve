@@ -20,6 +20,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import Header from './Header';
 import Geolocation from '@react-native-community/geolocation';
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
@@ -30,7 +31,7 @@ export default class App extends React.Component {
     this.state = {
       data: [
         {
-          name: 'Marina Bay sands open car park',
+          name: 'a',
           distance: 2,
           time: 14,
           availableSpots: 7,
@@ -38,7 +39,7 @@ export default class App extends React.Component {
             'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Marina_Bays_Sands_Hotel_and_ArtScience_Museum_Singapore.jpg/338px-Marina_Bays_Sands_Hotel_and_ArtScience_Museum_Singapore.jpg',
         },
         {
-          name: 'Marina financial center',
+          name: 'b',
           distance: 2.3,
           time: 17,
           availableSpots: 170,
@@ -46,7 +47,7 @@ export default class App extends React.Component {
             'https://www.eco-business.com/media/cache/61/33/6133b1d5dc6a95c040b7b8fcd3a584de.jpg',
         },
         {
-          name: 'Marina Barrage car park',
+          name: 'c',
           distance: 2.5,
           time: 14,
           availableSpots: 16,
@@ -54,18 +55,51 @@ export default class App extends React.Component {
             'https://www.geomotion.com.au/uploads/8/2/5/2/82525882/marina-barrage-singapore_1_orig.jpg',
         },
         {
-          name: 'OMB Car park',
+          name: 'd',
           distance: 4,
           time: 20,
           availableSpots: 0,
           picture:
             'https://upload.wikimedia.org/wikipedia/commons/a/ae/NTUC_Centre.JPG',
         },
+        {
+          name: 'e',
+          distance: 2,
+          time: 14,
+          availableSpots: 7,
+          picture:
+            'https://pix10.agoda.net/hotelImages/3036186/-1/a70cf3d068280e19c2b6ae71bff0a66f.jpg?s=1024x768',
+        },
+        {
+          name: 'Marina financial center',
+          distance: 2.3,
+          time: 17,
+          availableSpots: 170,
+          picture:
+            'https://assets.hyatt.com/content/dam/hyatt/hyattdam/images/2018/02/12/0915/Hyatt-Place-Bangkok-Sukhumvit-P050-AIRE-BAR-Outdoor-Lounge.jpg/Hyatt-Place-Bangkok-Sukhumvit-P050-AIRE-BAR-Outdoor-Lounge.16x9.jpg?imwidth=1280',
+        },
+        {
+          name: 'f',
+          distance: 2.5,
+          time: 14,
+          availableSpots: 16,
+          picture:
+            'https://brandinsider.straitstimes.com/wheelockplace/wp-content/uploads/sites/67/2018/07/wheelock-place-cone.jpg',
+        },
+        {
+          name: 'g',
+          distance: 4,
+          time: 20,
+          availableSpots: 0,
+          picture:
+            'https://encrypted-tbn0.gstatic.com/images?q=tbn%3AANd9GcRaHFiT_zvZ_6qhGz2rt0mm5eI4IMGfIPwZtagioZAv4Qz-5a_8',
+        },
       ],
       latitude: 0,
       longitude: 0,
+      destinationLatitude: 0,
+      destinationLongitude: 0,
       query: '',
-      showResult: false,
       locationArray: [],
     };
   }
@@ -78,91 +112,92 @@ export default class App extends React.Component {
   }
   componentDidMount() {
     this.checkgps();
-    this.getCarpark();
   }
   async checkgps() {
-    // navigator.geolocation.getCurrentPosition(position => {
-    //   this.setState(
-    //     {
-    //       latitude: position.coords.latitude,
-    //       longitude: position.coords.longitude,
-    //       error: null,
-    //     },
-    //     () => {
-    //       navigator.geolocation.clearWatch(this.watchId);
-    //     },
-    //   );
-    // });
     Geolocation.getCurrentPosition(
       position => {
-        console.log('position:', position.coords.latitude);
         this.setState({
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
           error: null,
         });
+        this.getCarpark();
       },
       error => Alert.alert(error.message),
       {enableHighAccuracy: true, timeout: 20000, maximumAge: 1000},
     );
   }
 
-  search(text) {
-    const url =
-      'https://developers.onemap.sg/commonapi/search?returnGeom=Y&getAddrDetails=Y&pageNum=1&searchVal=' +
-      text;
-    fetch(url, {
-      method: 'GET',
-    })
-      .then(response => response.json())
-      .then(responseJson => {
-        console.log('response:', responseJson);
-        // this.setState({
-        //   location: responseJson.results[0].ADDRESS,
-        //   retrieved: true,
-        //   lat: parseFloat(responseJson.results[0].LATITUDE),
-        //   lon: parseFloat(responseJson.results[0].LONGTITUDE),
-        // });
-        this.setState({
-          showResult: true,
-          locationArray: responseJson.results,
-        });
-      })
-      .catch(err => {
-        console.log('error:', err);
-        // return res.status(404).send(err);
-      });
-  }
-  navigateToHere(item) {
-    console.log('item:', item);
-    this.setState({
-      showResult: false,
-      latitude: parseFloat(item.LATITUDE),
-      longitude: parseFloat(item.LATITUDE),
-    });
-
+  navigateToOriginal = item => {
+    let lat = this.state.latitude;
+    let lon = this.state.longitude;
     _mapView.animateToRegion(
       {
-        latitude: parseFloat(item.LATITUDE),
-        longitude: parseFloat(item.LATITUDE),
+        latitude: lat,
+        longitude: lon,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
       },
       1000,
     );
-  }
+    this.getCarpark();
+  };
+  navigateToHere = item => {
+    let lat = parseFloat(item.LATITUDE);
+    let lon = parseFloat(item.LONGITUDE);
+    this.setState({
+      destinationLatitude: lat,
+      destinationLongitude: lon,
+    });
+    _mapView.animateToRegion(
+      {
+        latitude: lat,
+        longitude: lon,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      },
+      1000,
+    );
+    this.getCarpark();
+  };
 
   getCarpark() {
+    this.setState({locationArray: []});
+
     let url =
-      'https://www.streetdirectory.com/api/?mode=search&profile=sd_auto&limit=50&country=sg&origin=*&output=json&q=carpark';
+      'https://www.streetdirectory.com/api/?mode=search&profile=sd_auto&limit=30&country=sg&origin=*&output=json&q=carpark';
     fetch(url, {
       method: 'GET',
     })
       .then(response => response.json())
       .then(responseJson => {
-        console.log('car park response:', responseJson);
-        this.setState({locationArray: responseJson});
+        let locationArray = responseJson;
+        locationArray.splice(0, 1);
+        this.setState({locationArray: this.shuffle(locationArray)});
+
+        let array = this.shuffle(this.state.data);
+
+        for (var i = 0; i < array.length; i++) {
+          if (this.state.locationArray[i].v) {
+            array[i].name = this.state.locationArray[i].v;
+            array[i].availableSpots = this.state.locationArray[i].v.length;
+          }
+        }
+        this.setState({data: array});
+      })
+      .catch(err => {
+        // return res.status(404).send(err);
       });
+  }
+  shuffle(arr) {
+    var i, j, temp;
+    for (i = arr.length - 1; i > 0; i--) {
+      j = Math.floor(Math.random() * (i + 1));
+      temp = arr[i];
+      arr[i] = arr[j];
+      arr[j] = temp;
+    }
+    return arr;
   }
   render() {
     return (
@@ -186,6 +221,12 @@ export default class App extends React.Component {
             style={styles.map}>
             <MapView.Marker
               coordinate={{
+                latitude: this.state.destinationLatitude,
+                longitude: this.state.destinationLongitude,
+              }}
+            />
+            <MapView.Marker
+              coordinate={{
                 latitude: this.state.latitude,
                 longitude: this.state.longitude,
               }}>
@@ -197,62 +238,7 @@ export default class App extends React.Component {
             </MapView.Marker>
           </MapView>
         )}
-        <View style={styles.header}>
-          <View
-            style={{
-              justifyContent: 'center',
-            }}>
-            <TouchableOpacity>
-              <Image
-                source={require('./image/menu.png')}
-                style={styles.menuIcon}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-          </View>
-          <View style={styles.searchBar}>
-            <TextInput
-              style={{height: 40}}
-              placeholder={' Where would you like to park?'}
-              placeholderTextColor={'#4A8986'}
-              onChangeText={text =>
-                this.setState({query: text}, () => {
-                  this.search(text);
-                })
-              }
-              style={{fontWeight: 'bold', paddingLeft: 20}}
-            />
-            <TouchableOpacity
-              style={styles.searchIconContainer}
-              onPress={() => {
-                this.search();
-              }}>
-              <Image
-                source={require('./image/search.png')}
-                style={styles.searchIcon}
-                resizeMode="contain"
-              />
-            </TouchableOpacity>
-            {this.state.showResult == true && (
-              <View style={styles.dropDown}>
-                <FlatList
-                  data={this.state.locationArray}
-                  contentContainerStyle={{}}
-                  renderItem={({item}) => (
-                    <View style={styles.resultContainer}>
-                      <Text
-                        onPress={() => {
-                          this.navigateToHere(item);
-                        }}>
-                        {item.ADDRESS}
-                      </Text>
-                    </View>
-                  )}
-                />
-              </View>
-            )}
-          </View>
-        </View>
+        <Header navigateToHere={this.navigateToHere} />
         <View style={{position: 'absolute', bottom: 0, maxHeight: height / 2}}>
           <View style={{flexDirection: 'row'}}>
             <View style={styles.spotIndicatorContainer}>
@@ -264,7 +250,7 @@ export default class App extends React.Component {
             </View>
             <TouchableOpacity
               onPress={() => {
-                this.checkgps();
+                this.navigateToOriginal();
               }}
               style={styles.locationIconContainter}>
               <View style={styles.center}>
@@ -290,56 +276,60 @@ export default class App extends React.Component {
                 alignSelf: 'center',
               }}
             />
-            <FlatList
-              data={this.state.data}
-              contentContainerStyle={{paddingBottom: 50}}
-              renderItem={({item}) => (
-                <View style={styles.itemContainer}>
-                  <View style={{flexDirection: 'row'}}>
-                    <Image
-                      source={{
-                        uri: this.state.data[
-                          Math.floor(Math.random() * this.state.data.length)
-                        ].picture,
-                      }}
-                      style={styles.picture}
-                      resizeMode="cover"
-                    />
-
-                    <View style={{justifyContent: 'center', paddingLeft: 50}}>
-                      {this.state.locationArray.length > 0 && (
-                        <Text style={styles.name} numberOfLines={2}>
-                          {
-                            this.state.locationArray[
-                              Math.floor(
-                                Math.random() * this.state.locationArray.length,
-                              )
-                            ].v
-                          }
-                        </Text>
-                      )}
-                      <Text style={styles.details}>
-                        {item.distance + 'km  -' + item.time + ' mins away'}
-                      </Text>
-                    </View>
-                  </View>
-                  <View
-                    style={[
-                      styles.spotsNumberContainer,
-                      {
-                        backgroundColor:
-                          item.availableSpots == 0 ? 'lightgrey' : '#70E5C8',
-                      },
-                    ]}>
-                    <View style={styles.center}>
-                      <Text style={styles.spotsNumberText}>
-                        {item.availableSpots}
-                      </Text>
-                    </View>
-                  </View>
+            {this.state.locationArray.length == 0 && (
+              <View
+                style={{
+                  width: width,
+                  height: height / 2,
+                }}>
+                <View style={styles.center}>
+                  <ActivityIndicator size={'large'} style={{bottom: 50}} />
                 </View>
-              )}
-            />
+              </View>
+            )}
+            {this.state.locationArray.length != 0 && (
+              <FlatList
+                data={this.state.data}
+                contentContainerStyle={{paddingBottom: 50}}
+                renderItem={({item}) => (
+                  <View style={styles.itemContainer}>
+                    <View style={{flexDirection: 'row'}}>
+                      <Image
+                        source={{
+                          uri: item.picture,
+                        }}
+                        style={styles.picture}
+                        resizeMode="cover"
+                      />
+
+                      <View style={{justifyContent: 'center', paddingLeft: 50}}>
+                        <Text style={styles.name} numberOfLines={2}>
+                          {item.name}
+                        </Text>
+
+                        <Text style={styles.details}>
+                          {item.distance + 'km  -' + item.time + ' mins away'}
+                        </Text>
+                      </View>
+                    </View>
+                    <View
+                      style={[
+                        styles.spotsNumberContainer,
+                        {
+                          backgroundColor:
+                            item.availableSpots == 0 ? 'lightgrey' : '#70E5C8',
+                        },
+                      ]}>
+                      <View style={styles.center}>
+                        <Text style={styles.spotsNumberText}>
+                          {item.availableSpots}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                )}
+              />
+            )}
           </View>
         </View>
       </View>
